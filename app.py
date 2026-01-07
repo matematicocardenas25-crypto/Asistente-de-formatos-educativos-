@@ -4,6 +4,45 @@ from docx import Document
 from PIL import Image
 import numpy as np
 import io
+import streamlit as st
+
+# --- CONFIGURACIÓN DE DISEÑO PERSONALIZADO ---
+def agregar_diseno_personalizado():
+    st.markdown(
+        """
+        <style>
+        /* 1. Fondo Educativo para toda la página */
+        .stApp {
+            background-image: url("https://www.transparenttextures.com/patterns/notebook.png"); /* Patrón de hoja de cuaderno */
+            background-color: #f0f2f6; /* Color suave de fondo */
+            background-attachment: fixed;
+        }
+
+        /* 2. Tu imagen en la esquina superior derecha */
+        .imagen-derecha {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            z-index: 100;
+        }
+        
+        .imagen-derecha img {
+            width: 120px; /* Tamaño de tu foto */
+            border-radius: 50%; /* La hace circular */
+            border: 3px solid #007bff; /* Un borde azul educativo */
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        }
+        </style>
+        
+        <div class="imagen-derecha">
+            <img src="https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/mi_foto.png">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Llamar a la función para aplicar los cambios
+agregar_diseno_personalizado()
 
 # Configuración de la página
 st.set_page_config(page_title="Automatizador Educativo", layout="centered")
