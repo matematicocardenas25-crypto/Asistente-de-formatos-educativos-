@@ -27,49 +27,114 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 2. GENERADOR DE WORD ---
+# --- 2. LÓGICA DE CONTENIDO AUTOMÁTICO ---
+def generar_conclusiones(unidad):
+    return (f"Se desarrolló exitosamente el contenido programado para la unidad de '{unidad}'. "
+            "Los estudiantes lograron identificar los fundamentos teóricos y su aplicación práctica. "
+            "Se cumplió con la metodología de clase práctica, permitiendo que el estudiante fortalezca su capacidad "
+            "de análisis y resolución de problemas reales.")
+
+def generar_recomendaciones(unidad):
+    return (f"Se recomienda a los estudiantes revisar la bibliografía básica asignada para profundizar en '{unidad}'. "
+            "Es fundamental practicar los ejercicios de la guía de trabajo independiente y consultar dudas en la "
+            "siguiente sesión para consolidar el dominio de los instrumentos presentados.")
+
+# --- 3. GENERADOR DE WORD (FORMATO ORIGINAL FIEL) ---
 def generar_word_oficial(d):
     doc = Document()
+    
+    # Estilo global
     style = doc.styles['Normal']
     style.font.name = 'Arial'
-    style.font.size = Pt(12)
+    style.font.size = Pt(11)
 
-    section = doc.sections[0]
-    header = section.header
-    header.paragraphs[0].text = "PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES"
-    header.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Título Principal
+    p_titulo = doc.add_paragraph()
+    p_titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_titulo.add_run("PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES").bold = True
 
+    # I. DATOS GENERALES
     doc.add_heading('I. DATOS GENERALES:', level=1)
-    lineas = [
-        ("1.1 Área de conocimiento: ", f"{d['area']} " + "."*35),
-        ("1.2 Carrera: ", f"{d['carrera']} " + "."*15 + " 1.3 Modalidad: " + f"{d['modalidad']} " + "."*10),
-        ("1.4. Nombre de la asignatura: ", f"{d['asignatura']} " + "."*35),
-        ("1.5. Fecha: ", f"{d['fecha']} " + "."*15 + " 1.7. Profesor: " + f"{d['profesor']}")
-    ]
-    for bold_t, norm_t in lineas:
-        p = doc.add_paragraph()
-        p.add_run(bold_t).bold = True
-        p.add_run(norm_t)
+    
+    p1 = doc.add_paragraph()
+    p1.add_run("1.1 Área de conocimiento: ").bold = True
+    p1.add_run(f"{d['area']}")
 
-    secciones = [
-        ('II. UNIDAD:', d['unidad']), ('VI. ACTIVIDADES:', d['actividades']),
-        ('X. BIBLIOGRAFIA:', d['biblio'])
+    p2 = doc.add_paragraph()
+    p2.add_run("1.2 Carrera: ").bold = True
+    p2.add_run(f"{d['carrera']}")
+    p2.add_run("    1.3 Modalidad: ").bold = True
+    p2.add_run(f"{d['modalidad']}")
+    p2.add_run("    Turno: ").bold = True
+    p2.add_run("Diurno")
+
+    p3 = doc.add_paragraph()
+    p3.add_run("1.4. Nombre de la asignatura: ").bold = True
+    p3.add_run(f"{d['asignatura']}")
+
+    p4 = doc.add_paragraph()
+    p4.add_run("1.5. Fecha: ").bold = True
+    p4.add_run(f"{d['fecha']}")
+    p4.add_run("    1.6. Hora: ").bold = True
+    p4.add_run("10:30 am – 1:00 pm")
+
+    p5 = doc.add_paragraph()
+    p5.add_run("1.7. Profesor (a): ").bold = True
+    p5.add_run(f"{d['profesor']}")
+
+    # II. UNIDAD
+    doc.add_heading('II. UNIDAD:', level=1)
+    doc.add_paragraph(d['unidad'])
+
+    # III. OBJETIVO GENERAL
+    doc.add_heading('III. OBJETIVO GENERAL:', level=1)
+    doc.add_paragraph("Reconocer diferentes métodos para la recolección y organización de información para la construcción de base de datos mediante técnicas descripticas.")
+
+    # IV. OBJETIVOS ESPECÍFICOS
+    doc.add_heading('IV. OBJETIVO(S) ESPECÍFICO(S):', level=1)
+    obj_esp = [
+        "Definir conceptos básicos de estadística, fuentes de datos para investigación.",
+        "Explicar conceptos básicos de estadística y necesidad para realizar una investigación.",
+        "Aplicar técnicas de obtención de datos mediante encuesta."
     ]
-    for tit, cont in secciones:
-        doc.add_heading(tit, level=1)
-        doc.add_paragraph(cont)
+    for obj in obj_esp:
+        doc.add_paragraph(obj, style='List Bullet')
+
+    # V. EVALUACIÓN
+    doc.add_heading('V. EVALUACIÓN DE LOS APRENDIZAJES (Criterios y Evidencias):', level=1)
+    doc.add_paragraph(d['evaluacion'])
+
+    # VI. ACTIVIDADES (Incluyendo texto de escáner)
+    doc.add_heading('VI. ACTIVIDADES DEL DOCENTE Y DE LOS ESTUDIANTES:', level=1)
+    doc.add_paragraph(d['actividades'])
+
+    # VII. MEDIOS
+    doc.add_heading('VII. MEDIOS O RECURSOS DIDÁCTICOS NECESARIOS:', level=1)
+    doc.add_paragraph("Plan de clase, Libro digital, pizarra acrílica, borrador, marcadores.")
+
+    # VIII. CONCLUSIONES (Automáticas)
+    doc.add_heading('VIII. CONCLUSIONES', level=1)
+    doc.add_paragraph(generar_conclusiones(d['unidad']))
+
+    # IX. RECOMENDACIONES (Automáticas)
+    doc.add_heading('IX. RECOMENDACIONES:', level=1)
+    doc.add_paragraph(generar_recomendaciones(d['unidad']))
+
+    # X. BIBLIOGRAFIA
+    doc.add_heading('X. BIBLIOGRAFIA:', level=1)
+    doc.add_paragraph(d['biblio'])
 
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
     return buf
 
-# --- 3. INTERFAZ ---
+# --- 4. INTERFAZ ---
 tab1, tab2 = st.tabs(["📄 Planificación Didáctica", "📊 Calculadora Multidimensión"])
 
 with tab1:
-    st.title("Generador de Formatos")
-    archivo_img = st.file_uploader("📷 Escanear Actividades", type=['jpg','png','jpeg'])
+    st.title("Generador de Formatos Académicos")
+    archivo_img = st.file_uploader("📷 Escanear contenido de Actividades", type=['jpg','png','jpeg'])
     texto_escaneado = ""
     if archivo_img:
         reader = easyocr.Reader(['es'])
@@ -77,37 +142,34 @@ with tab1:
 
     with st.form("form_doc"):
         c1, c2 = st.columns(2)
-        area = c1.text_input("Área", "Ciencias Económica e Ingeniería")
-        carrera = c2.text_input("Carrera", "Ingeniería")
-        asignatura = c1.text_input("Asignatura", "Estadística")
-        profesor = c2.text_input("Profesor", "Ismael Antonio Cárdenas López")
-        fecha = st.text_input("Fecha", datetime.now().strftime("%d/%m/%Y"))
+        area = c1.text_input("1.1 Área de conocimiento", "Ciencias Económica y Empresariales, Ingeniería y Construcción")
+        carrera = c2.text_input("1.2 Carrera", "Todas")
+        asignatura = c1.text_input("1.4 Nombre de la asignatura", "Estadística Descriptiva")
+        profesor = c2.text_input("1.7 Profesor (a)", "Ismael Antonio Cárdenas López")
+        fecha = st.text_input("1.5 Fecha", datetime.now().strftime("%d/%m/%Y"))
         modalidad = "Presencial"
-        unidad = st.text_input("Unidad", "Recopilación de datos")
-        actividades = st.text_area("Actividades", value=texto_escaneado, height=150)
-        biblio = st.text_area("Bibliografía")
         
-        btn_validar = st.form_submit_button("✅ Procesar Datos")
+        unidad = st.text_area("II. UNIDAD (Tema de la sesión)", "Recopilación de datos. Clase practica 1.")
+        evaluacion = st.text_area("V. Evaluación (Criterios)", "Identifique los diferentes tipos de variables. Registro de participación.")
+        actividades = st.text_area("VI. Actividades (Cuerpo docente/estudiante)", value=texto_escaneado, height=200)
+        biblio = st.text_area("X. Bibliografía", "Saldaña, M. Y. (2024). Principios de Estadística descriptiva. Perú.")
+        
+        btn_validar = st.form_submit_button("✅ Generar Programación Completa")
 
     if btn_validar:
-        # Guardar en diccionario para evitar NameError
         datos_plan = {
             "area": area, "carrera": carrera, "asignatura": asignatura, 
             "profesor": profesor, "fecha": fecha, "modalidad": modalidad,
-            "unidad": unidad, "actividades": actividades, "biblio": biblio
+            "unidad": unidad, "evaluacion": evaluacion, "actividades": actividades, "biblio": biblio
         }
-        st.success("¡Documentos generados!")
-        col1, col2 = st.columns(2)
-        col1.download_button("📥 Descargar Word", generar_word_oficial(datos_plan), f"Plan_{asignatura}.docx")
-        
-        latex_txt = f"\\section*{{Actividades}}\n{actividades}"
-        col2.download_button("📥 Descargar LaTeX", latex_txt.encode(), f"Plan_{asignatura}.tex")
+        st.success("¡Documento estructurado correctamente con conclusiones y recomendaciones automáticas!")
+        st.download_button("📥 Descargar Word Oficial", generar_word_oficial(datos_plan), f"Programacion_{asignatura}.docx")
 
 with tab2:
+    # --- LA CALCULADORA SE MANTIENE SIN CAMBIOS ---
     st.title("📊 Gráficos Trascendentales (Ejes 0,0)")
     dim = st.radio("Dimensión:", ["2D (Plano)", "3D (Espacial)"], horizontal=True)
     
-    # Diccionario de funciones para el evaluador
     contexto_mat = {
         "np": np, "x": None, "y": None,
         "sin": np.sin, "cos": np.cos, "tan": np.tan, "exp": np.exp, "log": np.log, "sqrt": np.sqrt
