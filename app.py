@@ -1,5 +1,5 @@
 import streamlit as st
-import numpy as np
+import easyocr
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -7,13 +7,13 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from PIL import Image
+import numpy as np
 import io
 from datetime import datetime
 
-# --- CONFIGURACIÓN ---
-st.set_page_config(page_title="Asistente Prof. Cárdenas", layout="wide")
+# --- CONFIGURACIÓN Y ESTILO ---
+st.set_page_config(page_title="Asistente Educativo Prof. Cárdenas", layout="wide")
 
-# --- ESTILO Y FOTO ---
 st.markdown(
     """
     <style>
@@ -27,12 +27,13 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- FUNCIÓN GENERAR WORD ---
+# --- FUNCIONES DE GENERACIÓN ---
 def generar_word_oficial(d):
     doc = Document()
     style = doc.styles['Normal']
-    style.font.name = 'Arial'
-    style.font.size = Pt(12)
+    font = style.font
+    font.name = 'Arial'
+    font.size = Pt(12)
     
     section = doc.sections[0]
     header = section.header
@@ -40,15 +41,40 @@ def generar_word_oficial(d):
     header.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     doc.add_heading('I. DATOS GENERALES:', level=1)
-    p = doc.add_paragraph()
-    p.add_run(f"1.1 Área: {d['area']}\n1.4 Asignatura: {d['asignatura']}\n1.5 Fecha: {d['fecha']} | 1.7 Profesor: {d['profesor']}")
     
+    # Datos Generales con formato de puntos
+    p1 = doc.add_paragraph()
+    p1.add_run("1.1 Área de conocimiento: ").bold = True
+    p1.add_run(f"{d['area']} " + "."*30)
+    
+    p2 = doc.add_paragraph()
+    p2.add_run("1.2 Carrera: ").bold = True
+    p2.add_run(f"{d['carrera']} " + "."*15 + " 1.3 Modalidad: " + f"{d['modalidad']} " + "."*10)
+    
+    p3 = doc.add_paragraph()
+    p3.add_run("1.4. Nombre de la asignatura: ").bold = True
+    p3.add_run(f"{d['asignatura']} " + "."*30)
+
+    p4 = doc.add_paragraph()
+    p4.add_run("1.5. Fecha: ").bold = True
+    p4.add_run(f"{d['fecha']} " + "."*15 + " 1.6. Hora: " + f"{d['hora']} " + "."*15)
+
+    p5 = doc.add_paragraph()
+    p5.add_run("1.7. Profesor (a): ").bold = True
+    p5.add_run(f"{d['profesor']} " + "."*30)
+
+    # Resto de secciones (II a X)
     secciones = [
-        ('II. UNIDAD:', d['unidad']), ('2.1. Contenido:', d['contenido']),
-        ('III. OBJETIVO GENERAL:', d['obj_gen']), ('IV. OBJETIVO(S) ESPECÍFICO(S):', d['obj_esp']),
-        ('V. EVALUACIÓN:', d['evaluacion']), ('VI. ACTIVIDADES:', d['actividades']),
-        ('VII. RECURSOS:', d['recursos']), ('VIII. CONCLUSIONES:', d['conclusiones']),
-        ('IX. RECOMENDACIONES:', d['recomendaciones']), ('X. BIBLIOGRAFIA:', d['bibliografia'])
+        ('II. UNIDAD:', d['unidad']),
+        ('2.1. Contenido:', d['contenido']),
+        ('III. OBJETIVO GENERAL:', d['obj_gen']),
+        ('IV. OBJETIVO(S) ESPECÍFICO(S):', d['obj_esp']),
+        ('V. EVALUACIÓN DE LOS APRENDIZAJES (Criterios y Evidencias):', d['evaluacion']),
+        ('VI. ACTIVIDADES DEL DOCENTE Y ESTUDIANTES (Desarrollo):', d['actividades']),
+        ('VII. MEDIOS O RECURSOS DIDÁCTICOS NECESARIOS:', d['recursos']),
+        ('VIII. CONCLUSIONES:', d['conclusiones']),
+        ('IX. RECOMENDACIONES:', d['recomendaciones']),
+        ('X. BIBLIOGRAFIA:', d['biblio'])
     ]
     for tit, cont in secciones:
         doc.add_heading(tit, level=1)
@@ -60,55 +86,70 @@ def generar_word_oficial(d):
     return buf
 
 # --- INTERFAZ ---
-tab1, tab2 = st.tabs(["📄 Plan de Clase", "📊 Calculadora Multidimensión"])
+tab1, tab2 = st.tabs(["📄 Planificación", "📊 Graficador y Calculadora"])
 
 with tab1:
-    st.title("📝 Generador de Planes")
-    with st.form("form_plan"):
-        area = st.text_input("Área", "Ciencias Económica e Ingeniería")
-        asignatura = st.text_input("Asignatura", "Estadística descriptiva")
-        profesor = st.text_input("Profesor", "Ismael Antonio Cárdenas López")
-        fecha = st.text_input("Fecha", datetime.now().strftime("%d/%m/%Y"))
-        unidad = st.text_input("Unidad", "Recopilación de datos")
-        contenido = st.text_area("Contenido")
-        obj_gen = st.text_area("Objetivo General")
-        obj_esp = st.text_area("Objetivos Específicos")
-        actividades = st.text_area("Actividades")
-        evaluacion = st.text_area("Evaluación")
-        conclusiones = st.text_area("Conclusiones")
-        recomendaciones = st.text_area("Recomendaciones")
-        bibliografia = st.text_area("Bibliografía")
-        procesar = st.form_submit_button("✅ Validar Datos")
+    st.title("Generador de Programación Didáctica")
+    
+    # Escaneo fuera del form para agilidad
+    archivo_img = st.file_uploader("📷 Escanear para ACTIVIDADES (Punto VI)", type=['jpg','png','jpeg'])
+    texto_escaneado = ""
+    if archivo_img:
+        reader = easyocr.Reader(['es'])
+        texto_escaneado = "\n".join(reader.readtext(np.array(Image.open(archivo_img)), detail=0))
 
+    with st.form("main_form"):
+        c1, c2 = st.columns(2)
+        area = c1.text_input("Área de Conocimiento", "Ciencias Económica e Ingeniería")
+        asignatura = c2.text_input("Asignatura", "Estadística descriptiva")
+        profesor = st.text_input("Profesor(a)", "Ismael Antonio Cárdenas López")
+        fecha = st.text_input("Fecha", value=datetime.now().strftime("%d/%m/%Y"))
+        hora = c1.text_input("Hora", "10:30 am – 1:00 pm")
+        carrera = c2.text_input("Carrera", "Todas")
+        
+        unidad = st.text_input("II. Unidad", "Recopilación de datos")
+        contenido = st.text_area("2.1 Contenido")
+        obj_gen = st.text_area("III. Objetivo General")
+        obj_esp = st.text_area("IV. Objetivo(s) Específico(s)")
+        
+        # El escaneo cae aquí
+        actividades = st.text_area("VI. Actividades (Desarrollo)", value=texto_escaneado, height=200)
+        
+        evaluacion = st.text_area("V. Evaluación (Criterios y Evidencias)")
+        conclusiones = st.text_area("VIII. Conclusiones")
+        recomendaciones = st.text_area("IX. Recomendaciones")
+        biblio = st.text_area("X. Bibliografía")
+        
+        # Botón del formulario solo para procesar datos
+        procesar = st.form_submit_button("✅ Procesar Datos")
+
+    # BOTONES DE DESCARGA FUERA DEL FORM (Para evitar el error de la imagen)
     if procesar:
-        d = locals() # Captura variables del form
-        st.success("¡Datos listos!")
-        st.download_button("📥 Descargar Word", generar_word_oficial(d), "Plan.docx")
+        datos = {
+            'area': area, 'asignatura': asignatura, 'profesor': profesor, 'fecha': fecha,
+            'hora': hora, 'carrera': carrera, 'modalidad': "Presencial", 'turno': "Diurno",
+            'unidad': unidad, 'contenido': contenido, 'obj_gen': obj_gen, 'obj_esp': obj_esp,
+            'actividades': actividades, 'evaluacion': evaluacion, 'conclusiones conclusiones': conclusiones,
+            'recomendaciones': recomendaciones, 'biblio': biblio, 'recursos': "Libro, Pizarra, Guía",
+            'bibliografia': biblio
+        }
+        st.success("¡Datos listos para descargar!")
+        col_w, col_l = st.columns(2)
+        with col_w:
+            st.download_button("📥 Descargar Word", generar_word_oficial(datos), f"Plan_{asignatura}.docx")
+        with col_l:
+            st.download_button("📥 Descargar LaTeX", f"\\section*{{Actividades}}\n{actividades}".encode(), f"Plan_{asignatura}.tex")
 
 with tab2:
-    st.header("📊 Graficador y Calculadora Pro")
-    dim = st.radio("Dimensión:", ["2D (Funciones y Estadística)", "3D (Superficies)"], horizontal=True)
+    st.header("📊 Calculadora Gráfica Independiente")
+    tipo = st.selectbox("Tipo de Gráfico", ["Barras Estadísticas", "Curva Matemática (y=f(x))"])
     
-    if dim == "2D (Funciones y Estadística)":
-        tipo = st.selectbox("Tipo:", ["Función Matemática", "Análisis Estadístico"])
-        if tipo == "Función Matemática":
-            eq = st.text_input("f(x) =", "np.sin(x)")
-            x = np.linspace(-10, 10, 400)
-            y = eval(eq)
-            fig = px.line(x=x, y=y, title=f"Gráfico de {eq}")
-            st.plotly_chart(fig)
-        else:
-            datos_str = st.text_area("Datos (separados por coma):", "15, 20, 15, 30, 25")
-            datos = np.array([float(x.strip()) for x in datos_str.split(',')])
-            st.write(f"**Media (μ):** {np.mean(datos)} | **Desviación (σ):** {np.std(datos)}")
-            st.plotly_chart(px.histogram(datos, title="Histograma de Frecuencias"))
-            
-    else: # Gráficos 3D
-        eq_3d = st.text_input("z = f(x,y)", "np.sin(np.sqrt(x**2 + y**2))")
-        x = y = np.linspace(-5, 5, 50)
-        X, Y = np.meshgrid(x, y)
-        Z = eval(eq_3d, {"np": np, "x": X, "y": Y})
-        fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y)])
+    if tipo == "Barras Estadísticas":
+        val_x = st.text_input("Etiquetas (ej: A, B, C)", "Muestra 1, Muestra 2")
+        val_y = st.text_input("Valores (ej: 10, 20)", "15, 25")
+        
+        x_list = [i.strip() for i in val_x.split(',')]
+        y_list = [float(i) for i in val_y.split(',')]
+        fig = px.bar(x=x_list, y=y_list, title="Gráfico Estadístico")
         st.plotly_chart(fig)
-
-    st.info("💡 Usa el icono de la cámara en el gráfico para descargarlo y pegarlo en tu Word.")
+  
