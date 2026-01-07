@@ -6,9 +6,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from PIL import Image
 import numpy as np
 import io
+from datetime import datetime
 
-# --- DISEÑO ---
-st.set_page_config(page_title="Programación Didáctica", layout="wide")
+# --- 1. DISEÑO Y FOTO ---
+st.set_page_config(page_title="Asistente Educativo Inteligente", layout="wide")
 
 st.markdown(
     """
@@ -23,95 +24,82 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- FUNCIONES ---
-def generar_word(d):
+# --- 2. BASE DE DATOS INTELIGENTE (Auto-sugerencias) ---
+# Aquí puedes agregar más temas siguiendo el mismo formato
+SUGERENCIAS_AUTO = {
+    "Recopilación de datos": {
+        "conclusiones": "El estudiante logra identificar las fuentes primarias y secundarias de datos, comprendiendo la importancia de la fiabilidad en la investigación.",
+        "recomendaciones": "Realizar ejercicios prácticos de diseño de encuestas breves para validar la comprensión de los conceptos básicos."
+    },
+    "Cálculo del tamaño muestral": {
+        "conclusiones": "Se determinó con precisión el tamaño de la muestra aplicando fórmulas estadísticas según el margen de error aceptable.",
+        "recomendaciones": "Reforzar el uso de calculadoras estadísticas y tablas de distribución para agilizar el proceso de muestreo."
+    },
+    "Estadística descriptiva": {
+        "conclusiones": "Se sintetizaron los datos mediante medidas de tendencia central, permitiendo una interpretación clara del fenómeno estudiado.",
+        "recomendaciones": "Utilizar software como Excel o SPSS para la visualización gráfica de las frecuencias obtenidas."
+    }
+}
+
+# --- 3. FUNCIONES ---
+def generar_word_oficial(d):
     doc = Document()
-    t = doc.add_heading('PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES', 0)
-    t.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    titulo = doc.add_heading('PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES', 0)
+    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # I. DATOS GENERALES 
     doc.add_heading('I. DATOS GENERALES:', level=1)
-    doc.add_paragraph(f"1.1 Área de conocimiento: {d['area']}")
-    doc.add_paragraph(f"1.2 Carrera: {d['carrera']}   1.3 Modalidad: {d['modalidad']}")
-    doc.add_paragraph(f"1.4 Nombre de la asignatura: {d['asignatura']}")
-    doc.add_paragraph(f"1.5 Fecha: {d['fecha']}   1.6 Hora: {d['hora']}")
-    doc.add_paragraph(f"1.7 Profesor (a): {d['profesor']}")
+    p = doc.add_paragraph()
+    p.add_run(f"1.1 Área: {d['area']}\n1.4 Asignatura: {d['asignatura']}\n1.5 Fecha: {d['fecha']}\n1.7 Profesor: {d['profesor']}")
     
-    # II. UNIDAD Y CONTENIDO 
     doc.add_heading('II. UNIDAD:', level=1)
     doc.add_paragraph(d['unidad'])
-    doc.add_paragraph(f"2.1 Contenido: \n{d['contenido']}")
+    doc.add_paragraph(f"2.1. Contenido: \n{d['contenido']}")
     
-    # III, IV, V 
-    doc.add_heading('III. OBJETIVO GENERAL:', level=1)
-    doc.add_paragraph(d['obj_gen'])
-    doc.add_heading('IV. OBJETIVO(S) ESPECÍFICO(S):', level=1)
-    doc.add_paragraph(d['obj_esp'])
-    doc.add_heading('V. EVALUACIÓN DE LOS APRENDIZAJES:', level=1)
-    doc.add_paragraph(d['evaluacion'])
-    
-    # VI, VII, VIII, IX, X 
-    doc.add_heading('VI. ACTIVIDADES DEL DOCENTE Y ESTUDIANTES:', level=1)
-    doc.add_paragraph(d['actividades'])
-    doc.add_heading('VII. MEDIOS O RECURSOS DIDÁCTICOS:', level=1)
-    doc.add_paragraph(d['recursos'])
-    doc.add_heading('VIII. CONCLUSIONES:', level=1)
-    doc.add_paragraph(d['conclusiones'])
-    doc.add_heading('IX. RECOMENDACIONES:', level=1)
-    doc.add_paragraph(d['recomendaciones'])
-    doc.add_heading('X. BIBLIOGRAFIA:', level=1)
-    doc.add_paragraph(d['biblio'])
+    for sec, cont in [('VIII. CONCLUSIONES:', d['conclusiones']), ('IX. RECOMENDACIONES:', d['recomendaciones']), ('X. BIBLIOGRAFIA:', d['biblio'])]:
+        doc.add_heading(sec, level=1)
+        doc.add_paragraph(cont)
 
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
     return buf
 
-# --- INTERFAZ ---
-st.title("📝 Generador de Programación Didáctica")
+# --- 4. INTERFAZ ---
+st.title("📝 Programación Didáctica Automática")
 
-img_file = st.file_uploader("Sube imagen para extraer Contenido (OCR)", type=['jpg','png','jpeg'])
-texto_ocr = ""
-if img_file:
-    with st.spinner("Procesando imagen..."):
-        reader = easyocr.Reader(['es'])
-        texto_ocr = "\n".join(reader.readtext(np.array(Image.open(img_file)), detail=0))
+# Configuración de Fecha Automática
+fecha_hoy = datetime.now().strftime("%d/%m/%Y")
 
 with st.form("main_form"):
-    st.subheader("I. Datos Generales")
     col1, col2 = st.columns(2)
-    area = col1.text_input("Área de Conocimiento", "Ciencias Económicas e Ingeniería")
-    carrera = col2.text_input("Carrera", "Todas")
-    asignatura = col1.text_input("Asignatura", "Estadística descriptiva")
-    profesor = col2.text_input("Profesor(a)", "Ismael Antonio Cárdenas López")
-    modalidad = col1.selectbox("Modalidad", ["Presencial", "Virtual", "Semipresencial"])
-    fecha = col2.text_input("Fecha", "22/09/2025")
-    hora = col1.text_input("Hora", "10:30 am – 1:00 pm")
+    with col1:
+        asignatura = st.text_input("Asignatura", "Estadística descriptiva")
+        fecha = st.text_input("Fecha de la sesión", value=fecha_hoy)
+    with col2:
+        # Selección de tema que dispara la automatización
+        tema_seleccionado = st.selectbox("Seleccione el Tema de la Unidad", list(SUGERENCIAS_AUTO.keys()))
+        profesor = st.text_input("Profesor", "Ismael Antonio Cárdenas López")
 
-    st.subheader("II. Unidad y Contenido")
-    unidad = st.text_input("Nombre de la Unidad", "Recopilación de datos")
-    contenido = st.text_area("Contenido (OCR)", value=texto_ocr, height=150)
+    st.subheader("Contenido y Desarrollo")
+    contenido = st.text_area("2.1 Contenido del tema", height=100)
+    
+    # Lógica de auto-rellenado
+    sug_concl = SUGERENCIAS_AUTO[tema_seleccionado]["conclusiones"]
+    sug_recom = SUGERENCIAS_AUTO[tema_seleccionado]["recomendaciones"]
+    
+    conclusiones = st.text_area("VIII. Conclusiones (Auto-generadas)", value=sug_concl)
+    recomendaciones = st.text_area("IX. Recomendaciones (Auto-generadas)", value=sug_recom)
+    
+    biblio = st.text_area("X. Bibliografía", "Posada, G. J. (2016). Elementos básicos de estadística descriptiva...")
 
-    st.subheader("III, IV y V. Objetivos y Evaluación")
-    obj_gen = st.text_area("Objetivo General")
-    obj_esp = st.text_area("Objetivos Específicos")
-    evaluacion = st.text_area("V. Evaluación (Criterios)")
+    procesar = st.form_submit_button("Validar y Preparar Descarga")
 
-    st.subheader("VI y VII. Actividades y Recursos")
-    actividades = st.text_area("Actividades")
-    recursos = st.text_input("Recursos Didácticos", "Plan de clase, Libro, Pizarra")
-
-    st.subheader("Cierre")
-    conclusiones = st.text_area("VIII. Conclusiones")
-    recomendaciones = st.text_area("IX. Recomendaciones")
-    biblio = st.text_area("X. Bibliografía")
-
-    if st.form_submit_button("Generar Plan"):
-        datos = {
-            'area': area, 'carrera': carrera, 'modalidad': modalidad, 'asignatura': asignatura,
-            'fecha': fecha, 'hora': hora, 'profesor': profesor, 'unidad': unidad,
-            'contenido': contenido, 'obj_gen': obj_gen, 'obj_esp': obj_esp,
-            'evaluacion': evaluacion, 'actividades': actividades, 'recursos': recursos,
-            'conclusiones': conclusiones, 'recomendaciones': recomendaciones, 'biblio': biblio
-        }
-        st.download_button("📥 Descargar Word", generar_word(datos), f"Plan_{asignatura}.docx")
+if procesar:
+    datos = {
+        'area': "Ciencias Económicas e Ingeniería", 'asignatura': asignatura,
+        'fecha': fecha, 'profesor': profesor, 'unidad': tema_seleccionado,
+        'contenido': contenido, 'conclusiones': conclusiones, 
+        'recomendaciones': recomendaciones, 'biblio': biblio
+    }
+    st.success(f"Plan actualizado para el tema: {tema_seleccionado}")
+    st.download_button("📥 Descargar Plan en Word", generar_word_oficial(datos), f"Plan_{tema_seleccionado}.docx")
