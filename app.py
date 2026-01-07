@@ -1,58 +1,114 @@
-# --- PESTAÑA 2: CALCULADORA Y GRAFICADOR MULTIDIMENSIÓN ---
+import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from PIL import Image
+import io
+from datetime import datetime
+
+# --- CONFIGURACIÓN ---
+st.set_page_config(page_title="Asistente Prof. Cárdenas", layout="wide")
+
+# --- ESTILO Y FOTO ---
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #E3F2FD; }
+    .foto-perfil { position: fixed; top: 50px; right: 30px; z-index: 1000; }
+    .foto-perfil img { width: 110px; height: 110px; border-radius: 50%; border: 3px solid #1976D2; object-fit: cover; }
+    </style>
+    <div class="foto-perfil">
+        <img src="https://raw.githubusercontent.com/matematicocardenas25-cripto/Asistente-de-formatos-educativos-/main/foto.jpg.jpeg">
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# --- FUNCIÓN GENERAR WORD ---
+def generar_word_oficial(d):
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name = 'Arial'
+    style.font.size = Pt(12)
+    
+    section = doc.sections[0]
+    header = section.header
+    header.paragraphs[0].text = "PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES"
+    header.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_heading('I. DATOS GENERALES:', level=1)
+    p = doc.add_paragraph()
+    p.add_run(f"1.1 Área: {d['area']}\n1.4 Asignatura: {d['asignatura']}\n1.5 Fecha: {d['fecha']} | 1.7 Profesor: {d['profesor']}")
+    
+    secciones = [
+        ('II. UNIDAD:', d['unidad']), ('2.1. Contenido:', d['contenido']),
+        ('III. OBJETIVO GENERAL:', d['obj_gen']), ('IV. OBJETIVO(S) ESPECÍFICO(S):', d['obj_esp']),
+        ('V. EVALUACIÓN:', d['evaluacion']), ('VI. ACTIVIDADES:', d['actividades']),
+        ('VII. RECURSOS:', d['recursos']), ('VIII. CONCLUSIONES:', d['conclusiones']),
+        ('IX. RECOMENDACIONES:', d['recomendaciones']), ('X. BIBLIOGRAFIA:', d['bibliografia'])
+    ]
+    for tit, cont in secciones:
+        doc.add_heading(tit, level=1)
+        doc.add_paragraph(cont)
+    
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
+
+# --- INTERFAZ ---
+tab1, tab2 = st.tabs(["📄 Plan de Clase", "📊 Calculadora Multidimensión"])
+
+with tab1:
+    st.title("📝 Generador de Planes")
+    with st.form("form_plan"):
+        area = st.text_input("Área", "Ciencias Económica e Ingeniería")
+        asignatura = st.text_input("Asignatura", "Estadística descriptiva")
+        profesor = st.text_input("Profesor", "Ismael Antonio Cárdenas López")
+        fecha = st.text_input("Fecha", datetime.now().strftime("%d/%m/%Y"))
+        unidad = st.text_input("Unidad", "Recopilación de datos")
+        contenido = st.text_area("Contenido")
+        obj_gen = st.text_area("Objetivo General")
+        obj_esp = st.text_area("Objetivos Específicos")
+        actividades = st.text_area("Actividades")
+        evaluacion = st.text_area("Evaluación")
+        conclusiones = st.text_area("Conclusiones")
+        recomendaciones = st.text_area("Recomendaciones")
+        bibliografia = st.text_area("Bibliografía")
+        procesar = st.form_submit_button("✅ Validar Datos")
+
+    if procesar:
+        d = locals() # Captura variables del form
+        st.success("¡Datos listos!")
+        st.download_button("📥 Descargar Word", generar_word_oficial(d), "Plan.docx")
+
 with tab2:
-    st.header("📊 Generador de Gráficos Multidimensión")
-    st.write("Configura la dimensión y el tipo de gráfico. Luego descárgalo como imagen para tu documento.")
+    st.header("📊 Graficador y Calculadora Pro")
+    dim = st.radio("Dimensión:", ["2D (Funciones y Estadística)", "3D (Superficies)"], horizontal=True)
     
-    # Selector de Dimensión
-    dimension = st.radio("Seleccione la Dimensión del Gráfico:", ["2D (Plano)", "3D (Espacial)"], horizontal=True)
-    
-    col_g1, col_g2 = st.columns([1, 2])
-    
-    with col_g1:
-        if dimension == "2D (Plano)":
-            tipo = st.selectbox("Tipo de gráfico 2D", ["Matemático (y=f(x))", "Barras Estadísticas", "Distribución Normal"])
-            color_graf = st.color_picker("Color del trazo", "#1976D2")
+    if dim == "2D (Funciones y Estadística)":
+        tipo = st.selectbox("Tipo:", ["Función Matemática", "Análisis Estadístico"])
+        if tipo == "Función Matemática":
+            eq = st.text_input("f(x) =", "np.sin(x)")
+            x = np.linspace(-10, 10, 400)
+            y = eval(eq)
+            fig = px.line(x=x, y=y, title=f"Gráfico de {eq}")
+            st.plotly_chart(fig)
+        else:
+            datos_str = st.text_area("Datos (separados por coma):", "15, 20, 15, 30, 25")
+            datos = np.array([float(x.strip()) for x in datos_str.split(',')])
+            st.write(f"**Media (μ):** {np.mean(datos)} | **Desviación (σ):** {np.std(datos)}")
+            st.plotly_chart(px.histogram(datos, title="Histograma de Frecuencias"))
             
-            if tipo == "Matemático (y=f(x))":
-                ecuacion = st.text_input("Escribe la función (ej: x**3 - 2*x)", "x**2")
-                x_range = st.slider("Rango de X", -100, 100, (-10, 10))
-            elif tipo == "Distribución Normal":
-                mu = st.number_input("Media (μ)", value=0.0)
-                sigma = st.number_input("Desviación (σ)", value=1.0, min_value=0.1)
-                
-        else:  # Gráficos 3D
-            st.info("Visualización de superficies z = f(x, y)")
-            ecuacion_3d = st.text_input("Escribe la función (x, y)", "np.sin(np.sqrt(x**2 + y**2))")
-            rango_3d = st.slider("Rango de la malla (X e Y)", 1, 50, 10)
-            estilo_3d = st.selectbox("Escala de colores", ["Viridis", "Plasma", "Turbo", "Blues"])
+    else: # Gráficos 3D
+        eq_3d = st.text_input("z = f(x,y)", "np.sin(np.sqrt(x**2 + y**2))")
+        x = y = np.linspace(-5, 5, 50)
+        X, Y = np.meshgrid(x, y)
+        Z = eval(eq_3d, {"np": np, "x": X, "y": Y})
+        fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y)])
+        st.plotly_chart(fig)
 
-    with col_g2:
-        fig = go.Figure()
-
-        if dimension == "2D (Plano)":
-            if tipo == "Matemático (y=f(x))":
-                x = np.linspace(x_range[0], x_range[1], 500)
-                y = eval(ecuacion.replace('x', 'x'))
-                fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(color=color_graf, width=3)))
-                fig.update_layout(title=f"Gráfico 2D: f(x) = {ecuacion}")
-
-            elif tipo == "Distribución Normal":
-                x = np.linspace(mu - 4*sigma, mu + 4*sigma, 200)
-                y = (1/(sigma * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - mu)/sigma)**2)
-                fig.add_trace(go.Scatter(x=x, y=y, fill='tozeroy', line=dict(color=color_graf)))
-                fig.update_layout(title="Campana de Gauss (Distribución Normal)")
-
-        else: # Generación 3D
-            x = np.linspace(-rango_3d, rango_3d, 100)
-            y = np.linspace(-rango_3d, rango_3d, 100)
-            X, Y = np.meshgrid(x, y)
-            try:
-                Z = eval(ecuacion_3d)
-                fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale=estilo_3d)])
-                fig.update_layout(title=f"Superficie 3D: {ecuacion_3d}", scene=dict(
-                    xaxis_title='Eje X', yaxis_title='Eje Y', zaxis_title='Eje Z'))
-            except Exception as e:
-                st.error(f"Error en la función 3D: {e}")
-
-        st.plotly_chart(fig, use_container_width=True)
-        st.caption("Utilice las herramientas del gráfico para rotar (en 3D) o descargar la captura.")
+    st.info("💡 Usa el icono de la cámara en el gráfico para descargarlo y pegarlo en tu Word.")
