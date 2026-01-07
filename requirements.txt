@@ -3,3 +3,5 @@ easyocr
 python-docx
 pillow
 numpy
+pandas
+plotly
