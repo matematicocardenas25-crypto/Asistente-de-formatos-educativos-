@@ -7,27 +7,23 @@ from PIL import Image
 import numpy as np
 import io
 
-# --- 1. CONFIGURACIÓN DE PÁGINA Y DISEÑO ---
-st.set_page_config(page_title="Asistente de Formatos Educativos", layout="wide")
+# --- 1. CONFIGURACIÓN Y DISEÑO ---
+st.set_page_config(page_title="Asistente de Programación Didáctica", layout="wide")
 
-def aplicar_diseno_educativo():
+def aplicar_diseno_personalizado():
     st.markdown(
         """
         <style>
-        /* Fondo azul claro estilo educativo */
         .stApp {
-            background-color: #E3F2FD;
+            background-color: #E3F2FD; /* Azul claro educativo */
             background-image: url("https://www.transparenttextures.com/patterns/pinstriped-suit.png");
         }
-
-        /* Foto circular en la parte superior derecha */
         .foto-perfil {
             position: fixed;
             top: 50px;
             right: 30px;
             z-index: 1000;
         }
-        
         .foto-perfil img {
             width: 120px;
             height: 120px;
@@ -37,7 +33,6 @@ def aplicar_diseno_educativo():
             object-fit: cover;
         }
         </style>
-        
         <div class="foto-perfil">
             <img src="https://raw.githubusercontent.com/matematicocardenas25-cripto/Asistente-de-formatos-educativos-/main/foto.jpg.jpeg">
         </div>
@@ -45,120 +40,118 @@ def aplicar_diseno_educativo():
         unsafe_allow_html=True
     )
 
-aplicar_diseno_educativo()
+aplicar_diseno_personalizado()
 
-# --- 2. FUNCIONES DE GENERACIÓN DE DOCUMENTOS ---
-
-def crear_word(datos):
+# --- 2. LÓGICA DE GENERACIÓN DE DOCUMENTO WORD ---
+def generar_word_completo(d):
     doc = Document()
     
-    # Encabezado centrado
-    encabezado = doc.add_heading('PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES', 0)
-    encabezado.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Título Principal
+    t = doc.add_heading('PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES', 0)
+    t.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # Secciones según tu formato oficial 
-    doc.add_heading('I. DATOS GENERALES', level=1)
-    doc.add_paragraph(f"Asignatura: {datos['asignatura']}")
-    doc.add_paragraph(f"Profesor: {datos['profesor']}")
+    # I. DATOS GENERALES
+    doc.add_heading('I. DATOS GENERALES:', level=1)
+    p1 = doc.add_paragraph()
+    p1.add_run(f"1.1 Área de conocimiento: ").bold = True
+    p1.add_run(d['area'])
+    p1.add_run(f"\n1.4 Nombre de la asignatura: ").bold = True
+    p1.add_run(d['asignatura'])
+    p1.add_run(f"\n1.7 Profesor (a): ").bold = True
+    p1.add_run(d['profesor'])
     
-    doc.add_heading('II. UNIDAD Y CONTENIDO', level=1)
-    doc.add_paragraph(datos['unidad'])
-    doc.add_paragraph(f"Contenido: {datos['contenido']}")
+    # II. UNIDAD Y CONTENIDO
+    doc.add_heading('II. UNIDAD:', level=1)
+    doc.add_paragraph(d['unidad'])
+    doc.add_paragraph(f"2.1 Contenido: \n{d['contenido']}")
     
-    doc.add_heading('V. EVALUACIÓN (Criterios y Evidencias)', level=1)
-    doc.add_paragraph(datos['evaluacion'])
+    # III y IV. OBJETIVOS
+    doc.add_heading('III. OBJETIVO GENERAL:', level=1)
+    doc.add_paragraph(d['obj_general'])
+    doc.add_heading('IV. OBJETIVOS ESPECÍFICOS:', level=1)
+    doc.add_paragraph(d['obj_especificos'])
     
-    doc.add_heading('VIII. CONCLUSIONES', level=1)
-    doc.add_paragraph(datos['conclusiones'])
+    # V. EVALUACIÓN
+    doc.add_heading('V. EVALUACIÓN DE LOS APRENDIZAJES (Criterios y Evidencias):', level=1)
+    doc.add_paragraph(d['evaluacion'])
     
-    doc.add_heading('IX. RECOMENDACIONES', level=1)
-    doc.add_paragraph(datos['recomendaciones'])
+    # VI. ACTIVIDADES
+    doc.add_heading('VI. ACTIVIDADES DEL DOCENTE Y ESTUDIANTES:', level=1)
+    doc.add_paragraph(d['actividades'])
     
-    output = io.BytesIO()
-    doc.save(output)
-    output.seek(0)
-    return output
+    # VII. RECURSOS
+    doc.add_heading('VII. MEDIOS O RECURSOS DIDÁCTICOS:', level=1)
+    doc.add_paragraph(d['recursos'])
+    
+    # VIII y IX. CIERRE
+    doc.add_heading('VIII. CONCLUSIONES:', level=1)
+    doc.add_paragraph(d['conclusiones'])
+    doc.add_heading('IX. RECOMENDACIONES:', level=1)
+    doc.add_paragraph(d['recomendaciones'])
+    
+    # X. BIBLIOGRAFÍA
+    doc.add_heading('X. BIBLIOGRAFÍA:', level=1)
+    doc.add_paragraph(d['bibliografia'])
 
-def crear_latex(datos):
-    latex_template = f"""
-\\documentclass{{article}}
-\\usepackage[utf8]{{inputenc}}
-\\title{{Programación Didáctica: {datos['asignatura']}}}
-\\author{{{datos['profesor']}}}
-\\begin{{document}}
-\\maketitle
-\\section{{I. Datos Generales}}
-\\textbf{{Unidad:}} {datos['unidad']}
-\\section{{II. Contenido}}
-{datos['contenido']}
-\\section{{V. Evaluación}}
-{datos['evaluacion']}
-\\section{{VIII. Conclusiones}}
-{datos['conclusiones']}
-\\section{{IX. Recomendaciones}}
-{datos['recomendaciones']}
-\\end{{document}}
-    """
-    return latex_template
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
 
 # --- 3. INTERFAZ DE USUARIO ---
+st.title("📝 Creador de Programación Didáctica Oficial")
 
-st.title("📝 Asistente de Formatos Educativos")
-st.write("Sube una captura de contenido y completa los campos para generar tu plan de clase.")
+# OCR - Subida de imagen
+img_file = st.file_uploader("Sube captura del libro para el Contenido", type=['jpg','png','jpeg'])
+texto_ia = ""
+if img_file:
+    reader = easyocr.Reader(['es'])
+    texto_ia = "\n".join(reader.readtext(np.array(Image.open(img_file)), detail=0))
+    st.success("Texto extraído con éxito.")
 
-# Carga de Imagen y OCR
-archivo_img = st.file_uploader("Sube imagen del contenido (Libro/Notas)", type=['jpg', 'png', 'jpeg'])
-texto_extraido = ""
-
-if archivo_img:
-    img = Image.open(archivo_img)
-    st.image(img, caption="Imagen cargada", width=400)
-    with st.spinner("Extrayendo texto con IA..."):
-        reader = easyocr.Reader(['es'])
-        resultado = reader.readtext(np.array(img), detail=0)
-        texto_extraido = "\n".join(resultado)
-
-# Formulario de datos
-with st.form("datos_plan"):
-    col1, col2 = st.columns(2)
-    with col1:
-        asignatura = st.text_input("Asignatura", "Estadística descriptiva")
-        profesor = st.text_input("Profesor", "Ismael Antonio Cárdenas López")
+# FORMULARIO CON TODOS LOS PUNTOS DEL FORMATO
+with st.form("form_oficial"):
+    st.subheader("I. Datos Generales")
+    c1, c2 = st.columns(2)
+    area = c1.text_input("Área de Conocimiento", "Ingeniería y Construcción") [cite: 257]
+    asignatura = c2.text_input("Asignatura", "Estadística descriptiva") [cite: 259]
+    profesor = st.text_input("Profesor(a)", "Ismael Antonio Cárdenas López") [cite: 262]
     
-    unidad = st.text_input("Unidad", "Recopilación de datos")
-    contenido = st.text_area("Contenido (Extraído o manual)", value=texto_extraido, height=150)
+    st.subheader("II. Unidad y Contenido")
+    unidad = st.text_input("Nombre de la Unidad", "Recopilación de datos") [cite: 264]
+    contenido = st.text_area("2.1 Contenido (Extraído por OCR)", value=texto_ia, height=150) [cite: 266]
     
-    st.subheader("Secciones Actualizables")
-    evaluacion = st.text_area("V. Evaluación (Criterios y Evidencias)", placeholder="Escriba aquí los criterios...")
-    conclusiones = st.text_area("VIII. Conclusiones", placeholder="Escriba las conclusiones del tema...")
-    recomendaciones = st.text_area("IX. Recomendaciones", placeholder="Escriba las recomendaciones...")
+    st.subheader("III y IV. Objetivos")
+    obj_gen = st.text_area("Objetivo General") [cite: 271]
+    obj_esp = st.text_area("Objetivos Específicos") [cite: 273]
     
-    boton_preparar = st.form_submit_button("Preparar Documentos")
+    st.subheader("V. Evaluación")
+    evaluacion = st.text_area("Criterios y Evidencias", height=100) [cite: 280]
+    
+    st.subheader("VI y VII. Desarrollo y Recursos")
+    actividades = st.text_area("Actividades Docente/Estudiante") [cite: 289]
+    recursos = st.text_input("Medios y Recursos", "Plan de clase, Libro, Pizarra...") [cite: 485]
+    
+    st.subheader("VIII, IX y X. Cierre y Bibliografía")
+    conclusiones = st.text_area("Conclusiones") [cite: 487]
+    recomendaciones = st.text_area("Recomendaciones") [cite: 492]
+    bibliografia = st.text_area("Bibliografía Utilizada") [cite: 494]
+    
+    generar = st.form_submit_button("Generar Plan de Clase Completo")
 
-# --- 4. DESCARGAS ---
-if boton_preparar:
-    datos_finales = {
-        "asignatura": asignatura,
-        "profesor": profesor,
-        "unidad": unidad,
-        "contenido": contenido,
-        "evaluacion": evaluacion,
-        "conclusiones": conclusiones,
-        "recomendaciones": recomendaciones
+if generar:
+    datos = {
+        'area': area, 'asignatura': asignatura, 'profesor': profesor,
+        'unidad': unidad, 'contenido': contenido, 'obj_general': obj_gen,
+        'obj_especificos': obj_esp, 'evaluacion': evaluacion,
+        'actividades': actividades, 'recursos': recursos,
+        'conclusiones': conclusiones, 'recomendaciones': recomendaciones,
+        'bibliografia': bibliografia
     }
     
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-        st.download_button(
-            "📥 Descargar Word",
-            data=crear_word(datos_finales),
-            file_name=f"Plan_{asignatura}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
-    with col_d2:
-        st.download_button(
-            "📥 Descargar LaTeX",
-            data=crear_latex(datos_finales),
-            file_name=f"Plan_{asignatura}.tex",
-            mime="text/plain"
-        )
+    st.download_button(
+        label="📥 Descargar Programación en Word",
+        data=generar_word_completo(datos),
+        file_name=f"Programacion_{asignatura}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
