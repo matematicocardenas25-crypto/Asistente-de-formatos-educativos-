@@ -1,5 +1,5 @@
 import streamlit as st
-import easyocr
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -7,107 +7,138 @@ from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from PIL import Image
-import numpy as np
 import io
 from datetime import datetime
+import easyocr
 
-# ... (Todo el código inicial de estilo y Word se mantiene exactamente igual) ...
+# --- 1. CONFIGURACIÓN Y ESTILO ---
+st.set_page_config(page_title="Asistente Prof. Cárdenas", layout="wide")
 
-# --- 3. INTERFAZ POR PESTAÑAS ---
-tab1, tab2 = st.tabs(["📄 Planificación Didáctica", "📊 Calculadora y Gráficos Multidimensión"])
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #E3F2FD; }
+    .foto-perfil { position: fixed; top: 50px; right: 30px; z-index: 1000; }
+    .foto-perfil img { width: 115px; height: 115px; border-radius: 50%; border: 3px solid #1976D2; object-fit: cover; }
+    </style>
+    <div class="foto-perfil">
+        <img src="https://raw.githubusercontent.com/matematicocardenas25-cripto/Asistente-de-formatos-educativos-/main/foto.jpg.jpeg">
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# --- 2. GENERADOR DE WORD ---
+def generar_word_oficial(d):
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name = 'Arial'
+    style.font.size = Pt(12)
+
+    section = doc.sections[0]
+    header = section.header
+    header.paragraphs[0].text = "PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES"
+    header.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.add_heading('I. DATOS GENERALES:', level=1)
+    lineas = [
+        ("1.1 Área de conocimiento: ", f"{d['area']} " + "."*35),
+        ("1.2 Carrera: ", f"{d['carrera']} " + "."*15 + " 1.3 Modalidad: " + f"{d['modalidad']} " + "."*10),
+        ("1.4. Nombre de la asignatura: ", f"{d['asignatura']} " + "."*35),
+        ("1.5. Fecha: ", f"{d['fecha']} " + "."*15 + " 1.7. Profesor: " + f"{d['profesor']}")
+    ]
+    for bold_t, norm_t in lineas:
+        p = doc.add_paragraph()
+        p.add_run(bold_t).bold = True
+        p.add_run(norm_t)
+
+    secciones = [
+        ('II. UNIDAD:', d['unidad']), ('VI. ACTIVIDADES:', d['actividades']),
+        ('X. BIBLIOGRAFIA:', d['biblio'])
+    ]
+    for tit, cont in secciones:
+        doc.add_heading(tit, level=1)
+        doc.add_paragraph(cont)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
+
+# --- 3. INTERFAZ ---
+tab1, tab2 = st.tabs(["📄 Planificación Didáctica", "📊 Calculadora Multidimensión"])
 
 with tab1:
-    # ... (Mantenemos todo el código del Plan de Clase y las descargas Word/LaTeX igual) ...
-    st.title("Generador de Programación Didáctica")
-    archivo_img = st.file_uploader("📷 Subir imagen para ACTIVIDADES", type=['jpg','png','jpeg'])
+    st.title("Generador de Formatos")
+    archivo_img = st.file_uploader("📷 Escanear Actividades", type=['jpg','png','jpeg'])
     texto_escaneado = ""
     if archivo_img:
         reader = easyocr.Reader(['es'])
         texto_escaneado = "\n".join(reader.readtext(np.array(Image.open(archivo_img)), detail=0))
 
-    with st.form("plan_form"):
-        st.subheader("I. Datos Generales")
+    with st.form("form_doc"):
         c1, c2 = st.columns(2)
-        area = c1.text_input("Área de Conocimiento", "Ciencias Económica e Ingeniería")
-        carrera = c2.text_input("Carrera", "Todas")
-        asignatura = c1.text_input("Asignatura", "Estadística descriptiva")
-        profesor = c2.text_input("Profesor(a)", "Ismael Antonio Cárdenas López")
-        fecha = c1.text_input("Fecha", value=datetime.now().strftime("%d/%m/%Y"))
-        hora = c2.text_input("Hora", "10:30 am – 1:00 pm")
-        modalidad = c1.text_input("Modalidad", "Presencial")
-        turno = c2.text_input("Turno", "Diurno")
+        area = c1.text_input("Área", "Ciencias Económica e Ingeniería")
+        carrera = c2.text_input("Carrera", "Ingeniería")
+        asignatura = c1.text_input("Asignatura", "Estadística")
+        profesor = c2.text_input("Profesor", "Ismael Antonio Cárdenas López")
+        fecha = st.text_input("Fecha", datetime.now().strftime("%d/%m/%Y"))
+        modalidad = "Presencial"
+        unidad = st.text_input("Unidad", "Recopilación de datos")
+        actividades = st.text_area("Actividades", value=texto_escaneado, height=150)
+        biblio = st.text_area("Bibliografía")
+        
+        btn_validar = st.form_submit_button("✅ Procesar Datos")
 
-        st.subheader("Planificación y Cierre")
-        unidad = st.text_input("II. Unidad", "Recopilación de datos")
-        contenido = st.text_area("2.1 Contenido")
-        obj_gen = st.text_area("III. Objetivo General")
-        obj_esp = st.text_area("IV. Objetivo(s) Específico(s)")
-        evaluacion = st.text_area("V. Evaluación (Criterios y Evidencias)")
-        actividades = st.text_area("VI. Actividades (Desarrollo)", value=texto_escaneado, height=150)
-        recursos = st.text_input("VII. Recursos", "Libro, Pizarra, Guía")
-        conclusiones = st.text_area("VIII. Conclusiones")
-        recomendaciones = st.text_area("IX. Recomendaciones")
-        biblio = st.text_area("X. Bibliografía")
-        validar = st.form_submit_button("✅ Procesar Plan")
-
-    if validar:
-        datos = {'area': area, 'carrera': carrera, 'modalidad': modalidad, 'turno': turno, 'asignatura': asignatura, 'fecha': fecha, 'hora': hora, 'profesor': profesor, 'unidad': unidad, 'contenido': contenido, 'obj_gen': obj_gen, 'obj_esp': obj_esp, 'evaluacion': evaluacion, 'actividades': actividades, 'recursos': recursos, 'conclusiones': conclusiones, 'recomendaciones': recomendaciones, 'bibliografia': biblio}
+    if btn_validar:
+        # Guardar en diccionario para evitar NameError
+        datos_plan = {
+            "area": area, "carrera": carrera, "asignatura": asignatura, 
+            "profesor": profesor, "fecha": fecha, "modalidad": modalidad,
+            "unidad": unidad, "actividades": actividades, "biblio": biblio
+        }
         st.success("¡Documentos generados!")
-        col_down1, col_down2 = st.columns(2)
-        with col_down1:
-            st.download_button("📥 Descargar Word", generar_word_oficial(datos), f"Plan_{asignatura}.docx")
-        with col_down2:
-            latex_code = f"\\section*{{Actividades}}\n{actividades}"
-            st.download_button("📥 Descargar LaTeX", latex_code.encode(), f"Plan_{asignatura}.tex")
+        col1, col2 = st.columns(2)
+        col1.download_button("📥 Descargar Word", generar_word_oficial(datos_plan), f"Plan_{asignatura}.docx")
+        
+        latex_txt = f"\\section*{{Actividades}}\n{actividades}"
+        col2.download_button("📥 Descargar LaTeX", latex_txt.encode(), f"Plan_{asignatura}.tex")
 
 with tab2:
-    st.title("📊 Graficador de Funciones Trascendentales")
+    st.title("📊 Gráficos Trascendentales (Ejes 0,0)")
     dim = st.radio("Dimensión:", ["2D (Plano)", "3D (Espacial)"], horizontal=True)
     
-    # Diccionario para que el usuario pueda escribir 'sin' en lugar de 'np.sin'
-    safe_dict = {
-        "x": None, "y": None, "np": np,
-        "sin": np.sin, "cos": np.cos, "tan": np.tan,
-        "arcsin": np.arcsin, "arccos": np.arccos, "arctan": np.arctan,
-        "sinh": np.sinh, "cosh": np.cosh, "tanh": np.tanh,
-        "exp": np.exp, "log": np.log, "log10": np.log10,
-        "sqrt": np.sqrt, "pi": np.pi, "e": np.e
+    # Diccionario de funciones para el evaluador
+    contexto_mat = {
+        "np": np, "x": None, "y": None,
+        "sin": np.sin, "cos": np.cos, "tan": np.tan, "exp": np.exp, "log": np.log, "sqrt": np.sqrt
     }
 
-    col_c1, col_c2 = st.columns([1, 2])
-    with col_c1:
-        st.markdown("**Ejemplos de funciones:**")
-        st.code("exp(-x**2), sin(x)/x, log(x), cosh(x)")
-        
+    col_a, col_b = st.columns([1, 2])
+    with col_a:
         if dim == "2D (Plano)":
-            f_x = st.text_input("f(x) =", "sin(x)")
-            r_x = st.slider("Rango X", -100, 100, (-10, 10))
+            eq = st.text_input("f(x) =", "sin(x)")
+            r = st.slider("Rango", -50, 50, (-10, 10))
         else:
-            f_z = st.text_input("z = f(x, y)", "sin(sqrt(x**2 + y**2))")
-            r_3d = st.slider("Escala", 5, 50, 10)
+            eq_3d = st.text_input("z = f(x, y)", "x**2 - y**2")
+            res = st.slider("Resolución", 5, 20, 10)
 
-    with col_c2:
+    with col_b:
         try:
             if dim == "2D (Plano)":
-                x_vals = np.linspace(r_x[0], r_x[1], 1000)
-                safe_dict["x"] = x_vals
-                y_vals = eval(f_x, {"__builtins__": None}, safe_dict)
-                
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', line=dict(color='#1976D2', width=3)))
-                fig.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
-                fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
-                fig.update_layout(title=f"Gráfica 2D: {f_x}", plot_bgcolor='white')
+                x_val = np.linspace(r[0], r[1], 500)
+                contexto_mat["x"] = x_val
+                y_val = eval(eq, {"__builtins__": None}, contexto_mat)
+                fig = go.Figure(go.Scatter(x=x_val, y=y_val, line=dict(color='#1976D2', width=3)))
+                fig.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor='black')
+                fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='black')
+                st.plotly_chart(fig)
             else:
-                x = y = np.linspace(-r_3d, r_3d, 100)
+                x = y = np.linspace(-res, res, 100)
                 X, Y = np.meshgrid(x, y)
-                safe_dict["x"] = X
-                safe_dict["y"] = Y
-                Z = eval(f_z, {"__builtins__": None}, safe_dict)
-                
-                fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Viridis')])
-                fig.update_layout(title=f"Superficie 3D: {f_z}")
-
-            st.plotly_chart(fig, use_container_width=True)
+                contexto_mat["x"], contexto_mat["y"] = X, Y
+                Z = eval(eq_3d, {"__builtins__": None}, contexto_mat)
+                st.plotly_chart(go.Figure(data=[go.Surface(z=Z, x=X, y=Y)]))
         except Exception as e:
-            st.error(f"Error matemático: {e}. Asegúrate de usar 'x' (y 'y' en 3D).")
+            st.error(f"Error matemático: {e}")
+
+    st.info("📸 Usa el icono de la cámara en el gráfico para descargar la imagen.")
