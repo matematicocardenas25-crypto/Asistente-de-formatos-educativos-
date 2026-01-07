@@ -115,8 +115,27 @@ with tab1:
             'evaluacion': evaluacion, 'actividades': actividades, 'recursos': recursos,
             'conclusiones': conclusiones, 'recomendaciones': recomendaciones, 'bibliografia': biblio
         }
-        st.success("¡Documento generado correctamente!")
-        st.download_button("📥 Descargar Word (Arial 12)", generar_word_oficial(datos), f"Plan_{asignatura}.docx")
+        st.success("¡Documentos generados correctamente!")
+        
+        # --- BOTONES DE DESCARGA (WORD Y LATEX) ---
+        col_down1, col_down2 = st.columns(2)
+        with col_down1:
+            st.download_button("📥 Descargar Word (Arial 12)", generar_word_oficial(datos), f"Plan_{asignatura}.docx")
+        with col_down2:
+            # Generación de código LaTeX básico conservando el texto de actividades
+            latex_code = f"""
+\\documentclass{{article}}
+\\usepackage[utf8]{{inputenc}}
+\\title{{Plan de Clase: {asignatura}}}
+\\author{{{profesor}}}
+\\date{{{fecha}}}
+\\begin{{document}}
+\\maketitle
+\\section*{{VI. Actividades (Desarrollo)}}
+{actividades}
+\\end{{document}}
+            """
+            st.download_button("📥 Descargar LaTeX (.tex)", latex_code.encode('utf-8'), f"Plan_{asignatura}.tex")
 
 with tab2:
     st.title("📊 Graficador con Ejes en el Origen (0,0)")
@@ -141,19 +160,15 @@ with tab2:
             if dim == "2D (Plano)":
                 if tipo == "Función Matemática":
                     x = np.linspace(r_x[0], r_x[1], 400)
-                    y = eval(f_x.replace('x', 'x'))
+                    y = eval(f_x)
                     fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(color='#1976D2', width=3)))
-                    
-                    # CONFIGURACIÓN DE EJES EN EL CENTRO (0,0)
                     fig.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
                     fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
                     fig.update_layout(title=f"Gráfica de f(x) = {f_x}", plot_bgcolor='white')
-                
                 else:
                     data = [float(i) for i in vals_y.split(',')]
                     fig = px.bar(y=data, title="Gráfico Estadístico")
                     fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black')
-
             else:
                 x = y = np.linspace(-r_3d, r_3d, 100)
                 X, Y = np.meshgrid(x, y)
@@ -162,6 +177,6 @@ with tab2:
                 fig.update_layout(title=f"Superficie 3D: {f_z}")
 
             st.plotly_chart(fig, use_container_width=True)
-            st.info("📸 **Para descargar:** Use el icono de la cámara en la esquina superior derecha del gráfico.")
+            st.info("📸 **Para descargar la imagen:** Use el icono de la cámara en la esquina superior derecha del gráfico.")
         except Exception as e:
             st.error(f"Error en la expresión matemática: {e}")
