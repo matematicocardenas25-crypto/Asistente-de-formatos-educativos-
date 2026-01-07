@@ -1,96 +1,164 @@
 import streamlit as st
 import easyocr
 from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from PIL import Image
 import numpy as np
 import io
-import streamlit as st
 
-# --- CONFIGURACIÓN DE DISEÑO PERSONALIZADO ---
-def agregar_diseno_personalizado():
+# --- 1. CONFIGURACIÓN DE PÁGINA Y DISEÑO ---
+st.set_page_config(page_title="Asistente de Formatos Educativos", layout="wide")
+
+def aplicar_diseno_educativo():
     st.markdown(
         """
         <style>
-        /* 1. Fondo Educativo para toda la página */
+        /* Fondo azul claro estilo educativo */
         .stApp {
-            background-image: url("https://www.transparenttextures.com/patterns/notebook.png"); /* Patrón de hoja de cuaderno */
-            background-color: #f0f2f6; /* Color suave de fondo */
-            background-attachment: fixed;
+            background-color: #E3F2FD;
+            background-image: url("https://www.transparenttextures.com/patterns/pinstriped-suit.png");
         }
 
-        /* 2. Tu imagen en la esquina superior derecha */
-        .imagen-derecha {
+        /* Foto circular en la parte superior derecha */
+        .foto-perfil {
             position: fixed;
             top: 50px;
-            right: 20px;
-            z-index: 100;
+            right: 30px;
+            z-index: 1000;
         }
         
-        .imagen-derecha img {
-            width: 120px; /* Tamaño de tu foto */
-            border-radius: 50%; /* La hace circular */
-            border: 3px solid #007bff; /* Un borde azul educativo */
-            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        .foto-perfil img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 4px solid #1976D2;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+            object-fit: cover;
         }
         </style>
         
-        <div class="imagen-derecha">
-            <img src="https://github.com/matematicocardenas25-crypto/Asistente-de-formatos-educativos-/blob/main/foto.jpg.jpeg">
+        <div class="foto-perfil">
+            <img src="https://raw.githubusercontent.com/matematicocardenas25-cripto/Asistente-de-formatos-educativos-/main/foto.jpg.jpeg">
         </div>
         """,
         unsafe_allow_html=True
     )
 
-# Llamar a la función para aplicar los cambios
-agregar_diseno_personalizado()
+aplicar_diseno_educativo()
 
-# Configuración de la página
-st.set_page_config(page_title="Automatizador Educativo", layout="centered")
+# --- 2. FUNCIONES DE GENERACIÓN DE DOCUMENTOS ---
 
-st.title("📝 Creador de Formatos Educativos")
-st.write("Sube una captura de texto/imágenes y genera tu documento automáticamente.")
-
-# Función para extraer texto (OCR)
-@st.cache_resource # Esto hace que la página no se trabe al cargar el lector
-def cargar_lector():
-    return easyocr.Reader(['es'])
-
-reader = cargar_lector()
-
-# 1. Subir la imagen (Captura de libro o notas)
-archivo_imagen = st.file_uploader("1. Sube la captura de la información", type=["jpg", "png", "jpeg"])
-
-if archivo_imagen:
-    imagen = Image.open(archivo_imagen)
-    st.image(imagen, caption="Imagen cargada", use_column_width=True)
+def crear_word(datos):
+    doc = Document()
     
-    with st.spinner('Procesando texto...'):
-        # Convertir imagen para el lector
-        img_np = np.array(imagen)
-        resultado = reader.readtext(img_np, detail=0)
-        texto_extraido = "\n".join(resultado)
-        
-    # Mostrar el texto extraído para que el usuario lo edite si es necesario
-    st.subheader("Texto extraído (puedes editarlo):")
-    texto_final = st.text_area("Información capturada:", valor=texto_extraido, height=200)
+    # Encabezado centrado
+    encabezado = doc.add_heading('PROGRAMACIÓN DIDÁCTICA PARA LOS APRENDIZAJES', 0)
+    encabezado.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Secciones según tu formato oficial 
+    doc.add_heading('I. DATOS GENERALES', level=1)
+    doc.add_paragraph(f"Asignatura: {datos['asignatura']}")
+    doc.add_paragraph(f"Profesor: {datos['profesor']}")
+    
+    doc.add_heading('II. UNIDAD Y CONTENIDO', level=1)
+    doc.add_paragraph(datos['unidad'])
+    doc.add_paragraph(f"Contenido: {datos['contenido']}")
+    
+    doc.add_heading('V. EVALUACIÓN (Criterios y Evidencias)', level=1)
+    doc.add_paragraph(datos['evaluacion'])
+    
+    doc.add_heading('VIII. CONCLUSIONES', level=1)
+    doc.add_paragraph(datos['conclusiones'])
+    
+    doc.add_heading('IX. RECOMENDACIONES', level=1)
+    doc.add_paragraph(datos['recomendaciones'])
+    
+    output = io.BytesIO()
+    doc.save(output)
+    output.seek(0)
+    return output
 
-    # 2. Generar el archivo Word
-    if st.button("Generar Archivo Word"):
-        doc = Document()
-        doc.add_heading('PLAN DE CLASE / TUTORÍA', 0)
-        
-        # Aquí puedes diseñar la estructura de tu formato
-        doc.add_heading('Información Extraída:', level=1)
-        doc.add_paragraph(texto_final)
-        
-        # Guardar en memoria para descarga
-        buffer = io.BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-        
+def crear_latex(datos):
+    latex_template = f"""
+\\documentclass{{article}}
+\\usepackage[utf8]{{inputenc}}
+\\title{{Programación Didáctica: {datos['asignatura']}}}
+\\author{{{datos['profesor']}}}
+\\begin{{document}}
+\\maketitle
+\\section{{I. Datos Generales}}
+\\textbf{{Unidad:}} {datos['unidad']}
+\\section{{II. Contenido}}
+{datos['contenido']}
+\\section{{V. Evaluación}}
+{datos['evaluacion']}
+\\section{{VIII. Conclusiones}}
+{datos['conclusiones']}
+\\section{{IX. Recomendaciones}}
+{datos['recomendaciones']}
+\\end{{document}}
+    """
+    return latex_template
+
+# --- 3. INTERFAZ DE USUARIO ---
+
+st.title("📝 Asistente de Formatos Educativos")
+st.write("Sube una captura de contenido y completa los campos para generar tu plan de clase.")
+
+# Carga de Imagen y OCR
+archivo_img = st.file_uploader("Sube imagen del contenido (Libro/Notas)", type=['jpg', 'png', 'jpeg'])
+texto_extraido = ""
+
+if archivo_img:
+    img = Image.open(archivo_img)
+    st.image(img, caption="Imagen cargada", width=400)
+    with st.spinner("Extrayendo texto con IA..."):
+        reader = easyocr.Reader(['es'])
+        resultado = reader.readtext(np.array(img), detail=0)
+        texto_extraido = "\n".join(resultado)
+
+# Formulario de datos
+with st.form("datos_plan"):
+    col1, col2 = st.columns(2)
+    with col1:
+        asignatura = st.text_input("Asignatura", "Estadística descriptiva")
+        profesor = st.text_input("Profesor", "Ismael Antonio Cárdenas López")
+    
+    unidad = st.text_input("Unidad", "Recopilación de datos")
+    contenido = st.text_area("Contenido (Extraído o manual)", value=texto_extraido, height=150)
+    
+    st.subheader("Secciones Actualizables")
+    evaluacion = st.text_area("V. Evaluación (Criterios y Evidencias)", placeholder="Escriba aquí los criterios...")
+    conclusiones = st.text_area("VIII. Conclusiones", placeholder="Escriba las conclusiones del tema...")
+    recomendaciones = st.text_area("IX. Recomendaciones", placeholder="Escriba las recomendaciones...")
+    
+    boton_preparar = st.form_submit_button("Preparar Documentos")
+
+# --- 4. DESCARGAS ---
+if boton_preparar:
+    datos_finales = {
+        "asignatura": asignatura,
+        "profesor": profesor,
+        "unidad": unidad,
+        "contenido": contenido,
+        "evaluacion": evaluacion,
+        "conclusiones": conclusiones,
+        "recomendaciones": recomendaciones
+    }
+    
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
         st.download_button(
-            label="📥 Descargar Documento Word",
-            data=buffer,
-            file_name="Plan_Clase_Generado.docx",
+            "📥 Descargar Word",
+            data=crear_word(datos_finales),
+            file_name=f"Plan_{asignatura}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    with col_d2:
+        st.download_button(
+            "📥 Descargar LaTeX",
+            data=crear_latex(datos_finales),
+            file_name=f"Plan_{asignatura}.tex",
+            mime="text/plain"
         )
