@@ -27,7 +27,7 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-# --- 2. GENERADOR DE WORD (ESTILO ORIGINAL INTEGRAL) ---
+# --- 2. GENERADOR DE WORD (FORMATO ORIGINAL INTEGRAL) ---
 def generar_word_oficial(d):
     doc = Document()
     style = doc.styles['Normal']
@@ -72,7 +72,7 @@ def generar_word_oficial(d):
     return buf
 
 # --- 3. INTERFAZ POR PESTAÑAS ---
-tab1, tab2 = st.tabs(["📝 Planificación Didáctica", "📊 Calculadora y Gráficos Multidimensión"])
+tab1, tab2 = st.tabs(["📄 Planificación Didáctica", "📊 Calculadora y Gráficos Multidimensión"])
 
 with tab1:
     st.title("Generador de Programación Didáctica")
@@ -108,12 +108,18 @@ with tab1:
         validar = st.form_submit_button("✅ Procesar Plan")
 
     if validar:
-        datos = locals() # Captura las variables locales del formulario
+        datos = {
+            'area': area, 'carrera': carrera, 'modalidad': modalidad, 'turno': turno,
+            'asignatura': asignatura, 'fecha': fecha, 'hora': hora, 'profesor': profesor,
+            'unidad': unidad, 'contenido': contenido, 'obj_gen': obj_gen, 'obj_esp': obj_esp,
+            'evaluacion': evaluacion, 'actividades': actividades, 'recursos': recursos,
+            'conclusiones': conclusiones, 'recomendaciones': recomendaciones, 'bibliografia': biblio
+        }
         st.success("¡Documento generado correctamente!")
         st.download_button("📥 Descargar Word (Arial 12)", generar_word_oficial(datos), f"Plan_{asignatura}.docx")
 
 with tab2:
-    st.title("📊 Graficador y Calculadora Independiente")
+    st.title("📊 Graficador con Ejes en el Origen (0,0)")
     dim = st.radio("Dimensión del gráfico:", ["2D (Plano)", "3D (Espacial)"], horizontal=True)
     
     col_c1, col_c2 = st.columns([1, 2])
@@ -121,29 +127,41 @@ with tab2:
         if dim == "2D (Plano)":
             tipo = st.selectbox("Tipo:", ["Función Matemática", "Estadística (Barras)"])
             if tipo == "Función Matemática":
-                f_x = st.text_input("f(x) =", "np.sin(x)")
-                r_x = st.slider("Rango", -50, 50, (-10, 10))
+                f_x = st.text_input("f(x) =", "x**2 - 4")
+                r_x = st.slider("Rango de visualización", -100, 100, (-10, 10))
             else:
-                vals_y = st.text_input("Valores (separados por coma)", "10, 25, 15, 30")
+                vals_y = st.text_input("Valores (separados por coma)", "10, -5, 15, -10")
         else:
-            f_z = st.text_input("z = f(x, y)", "np.cos(x) + np.sin(y)")
-            r_3d = st.slider("Rango malla", 5, 20, 10)
+            f_z = st.text_input("z = f(x, y)", "x**2 - y**2")
+            r_3d = st.slider("Rango malla", 5, 50, 10)
 
     with col_c2:
-        if dim == "2D (Plano)":
-            if tipo == "Función Matemática":
-                x = np.linspace(r_x[0], r_x[1], 400)
-                y = eval(f_x)
-                fig = px.line(x=x, y=y, title=f"Gráfica de {f_x}")
-            else:
-                data = [float(i) for i in vals_y.split(',')]
-                fig = px.bar(y=data, title="Gráfico Estadístico")
-        else:
-            x = y = np.linspace(-r_3d, r_3d, 100)
-            X, Y = np.meshgrid(x, y)
-            Z = eval(f_z)
-            fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y)])
-            fig.update_layout(title=f"Superficie 3D: {f_z}")
+        fig = go.Figure()
+        try:
+            if dim == "2D (Plano)":
+                if tipo == "Función Matemática":
+                    x = np.linspace(r_x[0], r_x[1], 400)
+                    y = eval(f_x.replace('x', 'x'))
+                    fig.add_trace(go.Scatter(x=x, y=y, mode='lines', line=dict(color='#1976D2', width=3)))
+                    
+                    # CONFIGURACIÓN DE EJES EN EL CENTRO (0,0)
+                    fig.update_xaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
+                    fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black', showgrid=True)
+                    fig.update_layout(title=f"Gráfica de f(x) = {f_x}", plot_bgcolor='white')
+                
+                else:
+                    data = [float(i) for i in vals_y.split(',')]
+                    fig = px.bar(y=data, title="Gráfico Estadístico")
+                    fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='Black')
 
-        st.plotly_chart(fig, use_container_width=True)
-        st.info("📸 **Para descargar:** Pasa el ratón sobre el gráfico y haz clic en el icono de la cámara (Download plot as a png).")
+            else:
+                x = y = np.linspace(-r_3d, r_3d, 100)
+                X, Y = np.meshgrid(x, y)
+                Z = eval(f_z)
+                fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Viridis')])
+                fig.update_layout(title=f"Superficie 3D: {f_z}")
+
+            st.plotly_chart(fig, use_container_width=True)
+            st.info("📸 **Para descargar:** Use el icono de la cámara en la esquina superior derecha del gráfico.")
+        except Exception as e:
+            st.error(f"Error en la expresión matemática: {e}")
