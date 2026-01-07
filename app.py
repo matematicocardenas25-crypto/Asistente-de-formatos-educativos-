@@ -35,7 +35,7 @@ def agregar_diseno_personalizado():
         </style>
         
         <div class="imagen-derecha">
-            <img src="https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/mi_foto.png">
+            <img src="https://github.com/matematicocardenas25-crypto/Asistente-de-formatos-educativos-/blob/main/foto.jpg.jpeg">
         </div>
         """,
         unsafe_allow_html=True
